@@ -3,9 +3,10 @@
 # Task Management API Test Script
 # This script tests all API endpoints
 
-#BASE_URL="http://localhost:8000"
-#BASE_URL="https://task-management-tasks.apps.itz-q037mu.infra01-lb.fra02.techzone.ibm.com"
-BASE_URL="https://wmapigateway.apps.itz-q037mu.infra01-lb.fra02.techzone.ibm.com/user-demo-org/wmsandbox/tasks/1.0.0"
+# BASE_URL can be passed as environment variable, otherwise use default
+if [ -z "$BASE_URL" ]; then
+    BASE_URL="http://localhost:8000"
+fi
 PASSED=0
 FAILED=0
 

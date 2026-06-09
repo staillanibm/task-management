@@ -110,7 +110,7 @@ url: ## Show API URL
 .PHONY: test
 test: ## Test the API
 	@echo "$(YELLOW)Testing API...$(NC)"
-	@ROUTE=$$(oc get route task-api -n $(NAMESPACE) -o jsonpath='{.spec.host}' 2>/dev/null); \
+	@ROUTE=$$(oc get route task-management -n $(NAMESPACE) -o jsonpath='{.spec.host}' 2>/dev/null); \
 	if [ -n "$$ROUTE" ]; then \
 		echo "Testing: https://$$ROUTE/"; \
 		curl -k -s https://$$ROUTE/ | python3 -m json.tool || echo "API not accessible"; \
@@ -120,7 +120,22 @@ test: ## Test the API
 
 .PHONY: test-all
 test-all: ## Run all tests
-	@cd tests && ./test_api.sh
+	@ROUTE=$$(oc get route task-management -n $(NAMESPACE) -o jsonpath='{.spec.host}' 2>/dev/null); \
+	if [ -n "$$ROUTE" ]; then \
+		echo "$(YELLOW)Testing API at: https://$$ROUTE$(NC)"; \
+		cd tests && BASE_URL="https://$$ROUTE" ./test_api.sh; \
+	else \
+		echo "$(RED)Route not found. Using default BASE_URL$(NC)"; \
+		cd tests && ./test_api.sh; \
+	fi
+
+.PHONY: apic-test-all
+apic-test-all: ## Run all tests via API Gateway (requires APIC_CLIENT_ID, APIC_CLIENT_SECRET, BASE_URL)
+	@if [ -z "$$APIC_CLIENT_ID" ] || [ -z "$$APIC_CLIENT_SECRET" ]; then \
+		echo "$(RED)Error: APIC_CLIENT_ID and APIC_CLIENT_SECRET must be set$(NC)"; \
+		exit 1; \
+	fi
+	@cd tests && ./test_api_ngw.sh
 
 .PHONY: clean
 clean: ## Delete OpenShift resources

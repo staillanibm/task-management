@@ -1,30 +1,75 @@
 openapi: 3.0.0
 info:
-  title: task-management-api
+  title: Task Management API
   version: 1.0.0
-  description: Task management API
+  description: |
+    A comprehensive RESTful API for managing tasks and workflows. This API provides full CRUD operations 
+    for task management, including filtering, pagination, and status tracking capabilities.
+    
+    ## Features
+    - Create, read, update, and delete tasks
+    - Filter tasks by assignee and status
+    - Paginated results for efficient data retrieval
+    - UUID-based task identification
+    - Automatic timestamp tracking (created/updated)
+    - Support for multiple task statuses and workflow states
+    
+    ## Authentication
+    Currently, this API does not require authentication. Future versions may include OAuth2 or API key authentication.
   contact:
+    name: API Support
     email: stephane.tailland@ibm.com
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+
 servers:
   - url: https://api.example.com/v1
+    description: Production server
+
+
 tags:
   - name: Tasks
-    description: Tasks
+    description: |
+      Operations related to task management. Tasks represent work items that can be assigned, 
+      tracked, and managed through various workflow states.
+
 paths:
   /tasks:
     get:
-      summary: Retrieve a list of tasks
-      description: Use this method to list and filter tasks
+      summary: List all tasks
+      description: |
+        Retrieves a paginated list of tasks with optional filtering capabilities. 
+        Use query parameters to filter by assignee or status, and control pagination 
+        with pageSize and offset parameters.
+        
+        ## Filtering
+        - Filter by assignee email to see tasks assigned to a specific user
+        - Filter by status to view tasks in a particular workflow state
+        - Combine filters for more specific queries
+        
+        ## Pagination
+        - Default page size is 20 items
+        - Use offset for pagination (e.g., offset=20 for page 2)
+        - Results are ordered by creation date (newest first)
       tags:
         - Tasks
+      operationId: listTasks
       parameters:
         - name: assignee
           in: query
+          description: |
+            Filter tasks by assignee email address. Returns only tasks assigned to the specified user.
+            Example: `developer@example.com`
           required: false
           schema:
             type: string
+            format: email
+          example: developer@example.com
         - name: status
           in: query
+          description: |
+            Filter tasks by their current status. Only tasks matching the specified status will be returned.
           required: false
           schema:
             type: string
@@ -34,183 +79,576 @@ paths:
               - blocked
               - done
               - cancelled
+          example: inprogress
         - name: pageSize
           in: query
+          description: |
+            Number of tasks to return per page. Maximum value is 100.
           required: false
           schema:
             type: integer
+            minimum: 1
+            maximum: 100
             default: 20
+          example: 20
         - name: offset
           in: query
+          description: |
+            Number of tasks to skip before starting to return results. 
+            Used for pagination (e.g., offset=20 returns results starting from the 21st task).
           required: false
           schema:
             type: integer
+            minimum: 0
             default: 0
+          example: 0
       responses:
         '200':
-          description: A list of tasks
+          description: Successfully retrieved list of tasks
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Task'
+                type: array
+                items:
+                  $ref: '#/components/schemas/Task'
+              examples:
+                taskList:
+                  summary: Example list of tasks
+                  value:
+                    - id: "550e8400-e29b-41d4-a716-446655440000"
+                      creator: "john.doe@example.com"
+                      assignee: "jane.smith@example.com"
+                      status: "inprogress"
+                      targetDate: "2026-06-15T10:00:00Z"
+                      description: "Implement user authentication"
+                      comment: "Working on OAuth2 integration"
+                      createdAt: "2026-06-01T08:30:00Z"
+                      updatedAt: "2026-06-09T14:20:00Z"
+                    - id: "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
+                      creator: "admin@example.com"
+                      assignee: "john.doe@example.com"
+                      status: "todo"
+                      targetDate: "2026-06-20T16:00:00Z"
+                      description: "Update API documentation"
+                      comment: "Include new endpoints"
+                      createdAt: "2026-06-08T11:15:00Z"
+                      updatedAt: "2026-06-08T11:15:00Z"
         '400':
-          description: Bad request
+          description: Bad request - Invalid query parameters
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+              examples:
+                invalidStatus:
+                  summary: Invalid status value
+                  value:
+                    errorId: "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+                    timestamp: "2026-06-09T08:30:00Z"
+                    code: "INVALID_PARAMETER"
+                    message: "Invalid status value. Must be one of: todo, inprogress, blocked, done, cancelled"
         '500':
           description: Internal server error
-      operationId: retrieve-list-tasks
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
     post:
       summary: Create a new task
-      description: Use this method to create new tasks
+      description: |
+        Creates a new task with the provided details. The task ID and timestamps 
+        (createdAt, updatedAt) are automatically generated by the system.
+        
+        ## Required Fields
+        - description: A clear description of the task
+        
+        ## Optional Fields
+        - creator: Email of the task creator
+        - assignee: Email of the person assigned to the task
+        - status: Initial status (defaults to 'todo')
+        - targetDate: Target completion date
+        - comment: Additional notes or comments
       tags:
         - Tasks
+      operationId: createTask
       requestBody:
         required: true
+        description: Task object to be created
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Task'
+              $ref: '#/components/schemas/TaskInput'
+            examples:
+              newTask:
+                summary: Example new task
+                value:
+                  creator: "john.doe@example.com"
+                  assignee: "jane.smith@example.com"
+                  status: "todo"
+                  targetDate: "2026-06-30T17:00:00Z"
+                  description: "Implement new feature X"
+                  comment: "High priority - needed for next release"
       responses:
         '201':
-          description: Task created
+          description: Task successfully created
+          headers:
+            Location:
+              description: URL of the newly created task
+              schema:
+                type: string
+                format: uri
+              example: /tasks/550e8400-e29b-41d4-a716-446655440000
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Task'
+              examples:
+                createdTask:
+                  summary: Successfully created task
+                  value:
+                    id: "550e8400-e29b-41d4-a716-446655440000"
+                    creator: "john.doe@example.com"
+                    assignee: "jane.smith@example.com"
+                    status: "todo"
+                    targetDate: "2026-06-30T17:00:00Z"
+                    description: "Implement new feature X"
+                    comment: "High priority - needed for next release"
+                    createdAt: "2026-06-09T08:30:00Z"
+                    updatedAt: "2026-06-09T08:30:00Z"
         '400':
-          description: Bad request
+          description: Bad request - Invalid input data
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+              examples:
+                missingDescription:
+                  summary: Missing required field
+                  value:
+                    errorId: "8d0e7890-8536-51ef-b827-f18fc2f91bf8"
+                    timestamp: "2026-06-09T08:30:00Z"
+                    code: "VALIDATION_ERROR"
+                    message: "Description is required"
         '500':
           description: Internal server error
-      operationId: create-new-task
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
   /tasks/{taskId}:
     parameters:
       - name: taskId
         in: path
         required: true
+        description: |
+          Unique identifier (UUID) of the task. Must be a valid UUID v4 format.
         schema:
           type: string
           format: uuid
+        example: "550e8400-e29b-41d4-a716-446655440000"
+
     get:
-      summary: Retrieve a task by ID
-      description: Use this method to retrieve a task given its ID
+      summary: Get a task by ID
+      description: |
+        Retrieves detailed information about a specific task using its unique identifier.
+        Returns the complete task object including all fields and timestamps.
       tags:
         - Tasks
+      operationId: getTaskById
       responses:
         '200':
-          description: Task retrieved
+          description: Task successfully retrieved
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Task'
+              examples:
+                taskDetails:
+                  summary: Complete task details
+                  value:
+                    id: "550e8400-e29b-41d4-a716-446655440000"
+                    creator: "john.doe@example.com"
+                    assignee: "jane.smith@example.com"
+                    status: "inprogress"
+                    targetDate: "2026-06-15T10:00:00Z"
+                    description: "Implement user authentication"
+                    comment: "Working on OAuth2 integration"
+                    createdAt: "2026-06-01T08:30:00Z"
+                    updatedAt: "2026-06-09T14:20:00Z"
         '400':
-          description: Bad request
+          description: Bad request - Invalid UUID format
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+              examples:
+                invalidUuid:
+                  summary: Invalid UUID format
+                  value:
+                    errorId: "9e1f8901-9647-62f0-c938-029fd3f02cf9"
+                    timestamp: "2026-06-09T08:30:00Z"
+                    code: "INVALID_UUID"
+                    message: "Invalid UUID format for taskId"
         '404':
           description: Task not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                notFound:
+                  summary: Task does not exist
+                  value:
+                    errorId: "af20a012-a758-73g1-da49-13aae4g13dg0"
+                    timestamp: "2026-06-09T08:30:00Z"
+                    code: "NOT_FOUND"
+                    message: "Task with ID 550e8400-e29b-41d4-a716-446655440000 not found"
         '500':
           description: Internal server error
-      operationId: retrieve-task-id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
     put:
-      summary: Update a task by ID
-      description: Use this method to update a task
+      summary: Update a task
+      description: |
+        Updates an existing task with new information. All fields are optional - 
+        only provided fields will be updated. The updatedAt timestamp is automatically 
+        updated by the system.
+        
+        ## Updatable Fields
+        - assignee: Change task assignment
+        - status: Update workflow state
+        - targetDate: Modify deadline
+        - description: Update task description
+        - comment: Add or modify comments
+        
+        Note: The task ID, creator, createdAt, and updatedAt fields cannot be modified.
       tags:
         - Tasks
+      operationId: updateTask
       requestBody:
         required: true
+        description: Task fields to update (partial update supported)
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Task'
+              $ref: '#/components/schemas/TaskUpdate'
+            examples:
+              statusUpdate:
+                summary: Update task status
+                value:
+                  status: "done"
+                  comment: "Completed successfully"
+              reassignment:
+                summary: Reassign task
+                value:
+                  assignee: "new.developer@example.com"
+                  comment: "Reassigned due to workload balancing"
       responses:
         '200':
-          description: Task updated
+          description: Task successfully updated
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Task'
+              examples:
+                updatedTask:
+                  summary: Updated task
+                  value:
+                    id: "550e8400-e29b-41d4-a716-446655440000"
+                    creator: "john.doe@example.com"
+                    assignee: "jane.smith@example.com"
+                    status: "done"
+                    targetDate: "2026-06-15T10:00:00Z"
+                    description: "Implement user authentication"
+                    comment: "Completed successfully"
+                    createdAt: "2026-06-01T08:30:00Z"
+                    updatedAt: "2026-06-09T15:45:00Z"
         '400':
-          description: Bad request
+          description: Bad request - Invalid input data
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
         '404':
           description: Task not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '500':
           description: Internal server error
-      operationId: update-task-id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
     delete:
-      summary: Delete a task by ID
-      description: Use this method to delete a task
+      summary: Delete a task
+      description: |
+        Permanently deletes a task from the system. This operation cannot be undone.
+        
+        **Warning**: This is a destructive operation. Consider implementing a soft delete 
+        or archive mechanism in production environments.
       tags:
         - Tasks
+      operationId: deleteTask
       responses:
         '204':
-          description: Task deleted
+          description: Task successfully deleted (no content returned)
         '400':
-          description: Bad request
+          description: Bad request - Invalid UUID format
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
         '404':
           description: Task not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '500':
           description: Internal server error
-      operationId: delete-task-id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
 components:
   schemas:
     Task:
       type: object
+      description: |
+        Complete task object with all fields including system-generated metadata.
+        This schema represents the full task as stored in the database.
+      required:
+        - id
+        - description
+        - status
+        - createdAt
+        - updatedAt
       properties:
         id:
           type: string
           format: uuid
+          description: |
+            Unique identifier for the task. Automatically generated as a UUID v4 
+            when the task is created. This field is immutable.
+          example: "550e8400-e29b-41d4-a716-446655440000"
+          readOnly: true
         creator:
           type: string
+          format: email
+          description: |
+            Email address of the person who created the task. This field is set 
+            at creation time and cannot be modified.
+          example: "john.doe@example.com"
+          maxLength: 255
         assignee:
           type: string
+          format: email
+          description: |
+            Email address of the person assigned to work on this task. 
+            Can be updated to reassign the task to a different user.
+          example: "jane.smith@example.com"
+          maxLength: 255
         status:
           type: string
+          description: |
+            Current workflow status of the task. Represents the task's position 
+            in the workflow lifecycle.
+            
+            - **todo**: Task is planned but not yet started
+            - **inprogress**: Task is actively being worked on
+            - **blocked**: Task cannot proceed due to dependencies or issues
+            - **done**: Task has been completed successfully
+            - **cancelled**: Task has been cancelled and will not be completed
           enum:
             - todo
             - inprogress
             - blocked
             - done
             - cancelled
+          default: todo
+          example: "inprogress"
         targetDate:
           type: string
           format: date-time
+          description: |
+            Target completion date and time for the task in ISO 8601 format (UTC).
+            This is a soft deadline and can be updated as needed.
+          example: "2026-06-15T10:00:00Z"
         description:
           type: string
+          description: |
+            Detailed description of the task. Should clearly explain what needs 
+            to be done. This is a required field.
+          example: "Implement user authentication using OAuth2"
+          minLength: 1
+          maxLength: 5000
         comment:
           type: string
+          description: |
+            Additional notes, comments, or context about the task. Can be used 
+            for status updates, blockers, or any relevant information.
+          example: "Working on OAuth2 integration with Google and GitHub providers"
+          maxLength: 5000
         createdAt:
           type: string
           format: date-time
+          description: |
+            Timestamp when the task was created in ISO 8601 format (UTC). 
+            Automatically set by the system and cannot be modified.
+          example: "2026-06-01T08:30:00Z"
+          readOnly: true
         updatedAt:
           type: string
           format: date-time
+          description: |
+            Timestamp when the task was last updated in ISO 8601 format (UTC). 
+            Automatically updated by the system whenever the task is modified.
+          example: "2026-06-09T14:20:00Z"
+          readOnly: true
+
+    TaskInput:
+      type: object
+      description: |
+        Schema for creating a new task. The id, createdAt, and updatedAt fields 
+        are automatically generated and should not be provided.
+      required:
+        - description
+      properties:
+        creator:
+          type: string
+          format: email
+          description: Email address of the task creator
+          example: "john.doe@example.com"
+          maxLength: 255
+        assignee:
+          type: string
+          format: email
+          description: Email address of the person to assign the task to
+          example: "jane.smith@example.com"
+          maxLength: 255
+        status:
+          type: string
+          description: Initial status of the task (defaults to 'todo' if not specified)
+          enum:
+            - todo
+            - inprogress
+            - blocked
+            - done
+            - cancelled
+          default: todo
+          example: "todo"
+        targetDate:
+          type: string
+          format: date-time
+          description: Target completion date in ISO 8601 format (UTC)
+          example: "2026-06-30T17:00:00Z"
+        description:
+          type: string
+          description: Detailed description of the task (required)
+          example: "Implement new feature X"
+          minLength: 1
+          maxLength: 5000
+        comment:
+          type: string
+          description: Additional notes or comments
+          example: "High priority - needed for next release"
+          maxLength: 5000
+
+    TaskUpdate:
+      type: object
+      description: |
+        Schema for updating an existing task. All fields are optional - 
+        only provided fields will be updated. The id, createdAt, 
+        and updatedAt fields cannot be modified.
+      properties:
+        creator:
+          type: string
+          format: email
+          description: Updated creator email address
+          example: "updated.creator@example.com"
+          maxLength: 255
+        assignee:
+          type: string
+          format: email
+          description: New assignee email address
+          example: "new.developer@example.com"
+          maxLength: 255
+        status:
+          type: string
+          description: New status for the task
+          enum:
+            - todo
+            - inprogress
+            - blocked
+            - done
+            - cancelled
+          example: "done"
+        targetDate:
+          type: string
+          format: date-time
+          description: New target completion date
+          example: "2026-07-15T10:00:00Z"
+        description:
+          type: string
+          description: Updated task description
+          example: "Implement user authentication with MFA support"
+          minLength: 1
+          maxLength: 5000
+        comment:
+          type: string
+          description: Updated or additional comments
+          example: "Completed successfully with all test cases passing"
+          maxLength: 5000
+
     Error:
       type: object
+      description: |
+        Standard error response format used across all error scenarios. 
+        Provides detailed information about what went wrong.
+      required:
+        - errorId
+        - timestamp
+        - code
+        - message
       properties:
         errorId:
           type: string
           format: uuid
+          description: |
+            Unique identifier for this specific error occurrence. 
+            Can be used for tracking and debugging purposes.
+          example: "7c9e6679-7425-40de-944b-e07fc1f90ae7"
         timestamp:
           type: string
           format: date-time
+          description: |
+            Timestamp when the error occurred in ISO 8601 format (UTC).
+          example: "2026-06-09T08:30:00Z"
         code:
           type: string
+          description: |
+            Machine-readable error code for programmatic error handling.
+            
+            Common codes:
+            - VALIDATION_ERROR: Input validation failed
+            - NOT_FOUND: Requested resource not found
+            - INVALID_UUID: Invalid UUID format
+            - INVALID_PARAMETER: Invalid query parameter
+            - INTERNAL_ERROR: Unexpected server error
+          example: "VALIDATION_ERROR"
         message:
           type: string
+          description: |
+            Human-readable error message describing what went wrong. 
+            Suitable for displaying to end users or logging.
+          example: "Description is required"
+          maxLength: 1000

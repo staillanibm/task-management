@@ -50,3 +50,12 @@ Thumbs.db
 
 # Docker volumes
 postgres_data/
+
+*.jks
+*.pem
+*.cer
+
+.claude
+.bob
+
+secret.yaml

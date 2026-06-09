@@ -6,10 +6,12 @@ Simplified Kubernetes descriptors to deploy the Task Management API on OpenShift
 
 - `namespace.yaml` - Namespace `tasks`
 - `configmap.yaml` - Application configuration
-- `secret.yaml` - Database credentials
+- `secret.yaml.example` - Example database credentials (copy to secret.yaml)
 - `deployment.yaml` - API deployment (2 replicas, SCC restricted compatible)
 - `service.yaml` - ClusterIP service
 - `route.yaml` - OpenShift Route with TLS
+
+**Note**: `secret.yaml` is not tracked in Git for security reasons. Copy `secret.yaml.example` to `secret.yaml` and update with your actual credentials.
 
 ## Prerequisites
 
@@ -19,10 +21,14 @@ Simplified Kubernetes descriptors to deploy the Task Management API on OpenShift
 
 ## Deployment
 
-1. **Update secret with your DB credentials**:
+1. **Create secret file from example**:
    ```bash
+   cp secret.yaml.example secret.yaml
    vi secret.yaml
-   # Update: DATABASE_URL: "postgresql://user:pass@host:5432/db"
+   # Update with your actual PostgreSQL credentials:
+   # - POSTGRES_USER
+   # - POSTGRES_PASSWORD
+   # - POSTGRES_HOST (if different from default)
    ```
 
 2. **Deploy resources**:
