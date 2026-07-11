@@ -4,7 +4,7 @@ metadata:
   name: task-management
   namespace: tasks
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: task-management
@@ -19,7 +19,7 @@ spec:
           type: RuntimeDefault
       containers:
       - name: task-management
-        image: image-registry.openshift-image-registry.svc:5000/tasks/task-management:1.0.0
+        image: image-registry.openshift-image-registry.svc:5000/tasks/task-management:1.0.1
         imagePullPolicy: Always
         securityContext:
           allowPrivilegeEscalation: false

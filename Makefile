@@ -2,7 +2,7 @@
 
 # Variables
 IMAGE_NAME := task-management
-IMAGE_TAG := 1.0.0
+IMAGE_TAG := 1.0.1
 NAMESPACE := tasks
 REGISTRY_HOST := $(shell oc get route default-route -n openshift-image-registry -o jsonpath='{.spec.host}' 2>/dev/null)
 INTERNAL_REGISTRY := image-registry.openshift-image-registry.svc:5000

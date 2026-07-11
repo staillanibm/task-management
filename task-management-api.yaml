@@ -72,14 +72,7 @@ paths:
             Filter tasks by their current status. Only tasks matching the specified status will be returned.
           required: false
           schema:
-            type: string
-            enum:
-              - todo
-              - inprogress
-              - blocked
-              - done
-              - cancelled
-          example: inprogress
+            $ref: '#/components/schemas/TaskStatus'
         - name: pageSize
           in: query
           description: |
@@ -108,37 +101,36 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Task'
+                $ref: '#/components/schemas/TaskListResponse'
               examples:
                 taskList:
                   summary: Example list of tasks
                   value:
-                    - id: "550e8400-e29b-41d4-a716-446655440000"
-                      creator: "john.doe@example.com"
-                      assignee: "jane.smith@example.com"
-                      status: "inprogress"
-                      targetDate: "2026-06-15T10:00:00Z"
-                      description: "Implement user authentication"
-                      comment: "Working on OAuth2 integration"
-                      createdAt: "2026-06-01T08:30:00Z"
-                      updatedAt: "2026-06-09T14:20:00Z"
-                    - id: "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
-                      creator: "admin@example.com"
-                      assignee: "john.doe@example.com"
-                      status: "todo"
-                      targetDate: "2026-06-20T16:00:00Z"
-                      description: "Update API documentation"
-                      comment: "Include new endpoints"
-                      createdAt: "2026-06-08T11:15:00Z"
-                      updatedAt: "2026-06-08T11:15:00Z"
+                    tasks:
+                      - id: "550e8400-e29b-41d4-a716-446655440000"
+                        creator: "john.doe@example.com"
+                        assignee: "jane.smith@example.com"
+                        status: "inprogress"
+                        targetDate: "2026-06-15T10:00:00Z"
+                        description: "Implement user authentication"
+                        comment: "Working on OAuth2 integration"
+                        createdAt: "2026-06-01T08:30:00Z"
+                        updatedAt: "2026-06-09T14:20:00Z"
+                      - id: "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
+                        creator: "admin@example.com"
+                        assignee: "john.doe@example.com"
+                        status: "todo"
+                        targetDate: "2026-06-20T16:00:00Z"
+                        description: "Update API documentation"
+                        comment: "Include new endpoints"
+                        createdAt: "2026-06-08T11:15:00Z"
+                        updatedAt: "2026-06-08T11:15:00Z"
         '400':
           description: Bad request - Invalid query parameters
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: '#/components/schemas/ErrorResponse'
               examples:
                 invalidStatus:
                   summary: Invalid status value
@@ -147,12 +139,26 @@ paths:
                     timestamp: "2026-06-09T08:30:00Z"
                     code: "INVALID_PARAMETER"
                     message: "Invalid status value. Must be one of: todo, inprogress, blocked, done, cancelled"
+        '422':
+          description: Validation error - Request failed schema validation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                validationError:
+                  summary: Request validation failed
+                  value:
+                    errorId: "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+                    timestamp: "2026-06-09T08:30:00Z"
+                    code: "VALIDATION_ERROR"
+                    message: "description: Field required"
         '500':
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: '#/components/schemas/ErrorResponse'
 
     post:
       summary: Create a new task
@@ -178,7 +184,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/TaskInput'
+              $ref: '#/components/schemas/TaskCreate'
             examples:
               newTask:
                 summary: Example new task
@@ -202,7 +208,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Task'
+                $ref: '#/components/schemas/TaskResponse'
               examples:
                 createdTask:
                   summary: Successfully created task
@@ -221,7 +227,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: '#/components/schemas/ErrorResponse'
               examples:
                 missingDescription:
                   summary: Missing required field
@@ -230,12 +236,26 @@ paths:
                     timestamp: "2026-06-09T08:30:00Z"
                     code: "VALIDATION_ERROR"
                     message: "Description is required"
+        '422':
+          description: Validation error - Request failed schema validation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                validationError:
+                  summary: Request validation failed
+                  value:
+                    errorId: "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+                    timestamp: "2026-06-09T08:30:00Z"
+                    code: "VALIDATION_ERROR"
+                    message: "description: Field required"
         '500':
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: '#/components/schemas/ErrorResponse'
 
   /tasks/{taskId}:
     parameters:
@@ -263,7 +283,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Task'
+                $ref: '#/components/schemas/TaskResponse'
               examples:
                 taskDetails:
                   summary: Complete task details
@@ -282,7 +302,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: '#/components/schemas/ErrorResponse'
               examples:
                 invalidUuid:
                   summary: Invalid UUID format
@@ -296,7 +316,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: '#/components/schemas/ErrorResponse'
               examples:
                 notFound:
                   summary: Task does not exist
@@ -305,12 +325,26 @@ paths:
                     timestamp: "2026-06-09T08:30:00Z"
                     code: "NOT_FOUND"
                     message: "Task with ID 550e8400-e29b-41d4-a716-446655440000 not found"
+        '422':
+          description: Validation error - Request failed schema validation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                validationError:
+                  summary: Request validation failed
+                  value:
+                    errorId: "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+                    timestamp: "2026-06-09T08:30:00Z"
+                    code: "VALIDATION_ERROR"
+                    message: "description: Field required"
         '500':
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: '#/components/schemas/ErrorResponse'
 
     put:
       summary: Update a task
@@ -354,7 +388,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Task'
+                $ref: '#/components/schemas/TaskResponse'
               examples:
                 updatedTask:
                   summary: Updated task
@@ -373,19 +407,33 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Task not found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation error - Request failed schema validation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                validationError:
+                  summary: Request validation failed
+                  value:
+                    errorId: "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+                    timestamp: "2026-06-09T08:30:00Z"
+                    code: "VALIDATION_ERROR"
+                    message: "description: Field required"
         '500':
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: '#/components/schemas/ErrorResponse'
 
     delete:
       summary: Delete a task
@@ -405,24 +453,74 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Task not found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation error - Request failed schema validation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                validationError:
+                  summary: Request validation failed
+                  value:
+                    errorId: "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+                    timestamp: "2026-06-09T08:30:00Z"
+                    code: "VALIDATION_ERROR"
+                    message: "description: Field required"
         '500':
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: '#/components/schemas/ErrorResponse'
 
 components:
   schemas:
-    Task:
+    TaskStatus:
+      type: string
+      title: Task status
+      description: |
+        Current workflow status of a task, representing its position in the
+        workflow lifecycle.
+
+        - **todo**: Task is planned but not yet started
+        - **inprogress**: Task is actively being worked on
+        - **blocked**: Task cannot proceed due to dependencies or issues
+        - **done**: Task has been completed successfully
+        - **cancelled**: Task has been cancelled and will not be completed
+      enum:
+        - todo
+        - inprogress
+        - blocked
+        - done
+        - cancelled
+      example: "inprogress"
+
+    TaskListResponse:
       type: object
+      title: Task list
+      description: |
+        Container object wrapping the list of tasks returned by the list endpoint.
+        The tasks are contained under the `tasks` property.
+      required:
+        - tasks
+      properties:
+        tasks:
+          type: array
+          description: The list of tasks matching the query.
+          items:
+            $ref: '#/components/schemas/TaskResponse'
+
+    TaskResponse:
+      type: object
+      title: Task
       description: |
         Complete task object with all fields including system-generated metadata.
         This schema represents the full task as stored in the database.
@@ -458,24 +556,9 @@ components:
           example: "jane.smith@example.com"
           maxLength: 255
         status:
-          type: string
-          description: |
-            Current workflow status of the task. Represents the task's position 
-            in the workflow lifecycle.
-            
-            - **todo**: Task is planned but not yet started
-            - **inprogress**: Task is actively being worked on
-            - **blocked**: Task cannot proceed due to dependencies or issues
-            - **done**: Task has been completed successfully
-            - **cancelled**: Task has been cancelled and will not be completed
-          enum:
-            - todo
-            - inprogress
-            - blocked
-            - done
-            - cancelled
+          allOf:
+            - $ref: '#/components/schemas/TaskStatus'
           default: todo
-          example: "inprogress"
         targetDate:
           type: string
           format: date-time
@@ -515,10 +598,11 @@ components:
           example: "2026-06-09T14:20:00Z"
           readOnly: true
 
-    TaskInput:
+    TaskCreate:
       type: object
+      title: Task input
       description: |
-        Schema for creating a new task. The id, createdAt, and updatedAt fields 
+        Schema for creating a new task. The id, createdAt, and updatedAt fields
         are automatically generated and should not be provided.
       required:
         - description
@@ -536,16 +620,10 @@ components:
           example: "jane.smith@example.com"
           maxLength: 255
         status:
-          type: string
+          allOf:
+            - $ref: '#/components/schemas/TaskStatus'
           description: Initial status of the task (defaults to 'todo' if not specified)
-          enum:
-            - todo
-            - inprogress
-            - blocked
-            - done
-            - cancelled
           default: todo
-          example: "todo"
         targetDate:
           type: string
           format: date-time
@@ -565,8 +643,9 @@ components:
 
     TaskUpdate:
       type: object
+      title: Task update
       description: |
-        Schema for updating an existing task. All fields are optional - 
+        Schema for updating an existing task. All fields are optional -
         only provided fields will be updated. The id, createdAt, 
         and updatedAt fields cannot be modified.
       properties:
@@ -583,15 +662,9 @@ components:
           example: "new.developer@example.com"
           maxLength: 255
         status:
-          type: string
+          allOf:
+            - $ref: '#/components/schemas/TaskStatus'
           description: New status for the task
-          enum:
-            - todo
-            - inprogress
-            - blocked
-            - done
-            - cancelled
-          example: "done"
         targetDate:
           type: string
           format: date-time
@@ -609,10 +682,11 @@ components:
           example: "Completed successfully with all test cases passing"
           maxLength: 5000
 
-    Error:
+    ErrorResponse:
       type: object
+      title: Error
       description: |
-        Standard error response format used across all error scenarios. 
+        Standard error response format used across all error scenarios.
         Provides detailed information about what went wrong.
       required:
         - errorId
