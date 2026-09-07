@@ -68,11 +68,6 @@ spec:
             configMapKeyRef:
               name: task-management-config
               key: APP_VERSION
-        - name: AUTH_DISABLED
-          valueFrom:
-            configMapKeyRef:
-              name: task-management-config
-              key: AUTH_DISABLED
         - name: JWT_ISSUER
           valueFrom:
             configMapKeyRef:
@@ -88,6 +83,11 @@ spec:
             configMapKeyRef:
               name: task-management-config
               key: JWT_JWK_URL
+        - name: API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: task-management-secret
+              key: API_KEY
         resources:
           requests:
             memory: "128Mi"

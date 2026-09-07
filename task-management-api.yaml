@@ -15,11 +15,15 @@ info:
     - Support for multiple task statuses and workflow states
     
     ## Authentication
-    This API requires a JWT bearer token issued by an external identity provider
-    (issuer, audience, and JWKS endpoint are configured per environment). The
-    token's `scope` (or `scp`) claim must include `tasks:read` for read-only
-    calls, or `tasks:full` for all calls. Authentication can be disabled entirely
-    via configuration (`AUTH_DISABLED`), e.g. for local development.
+    This API accepts either a JWT bearer token issued by an external identity
+    provider (issuer, audience, and JWKS endpoint are configured per environment),
+    or a static API key sent as `X-API-Key` (configured externally, e.g. via a
+    Kubernetes Secret).
+
+    Access is scope-based: `tasks:read` grants read-only calls (GET), and
+    `tasks:write` grants write calls (POST/PUT/DELETE) - neither implies the
+    other, so a JWT needs both scopes (in its `scope` or `scp` claim) for full
+    access. A valid API key grants both scopes.
   contact:
     name: API Support
     email: stephane.tailland@ibm.com
@@ -33,6 +37,7 @@ servers:
 
 security:
   - bearerAuth: []
+  - apiKeyAuth: []
 
 tags:
   - name: Tasks
@@ -555,7 +560,14 @@ components:
       bearerFormat: JWT
       description: |
         Access token issued by the configured external IdP. Required scopes:
-        `tasks:read` for GET calls, `tasks:full` for all calls.
+        `tasks:read` for GET calls, `tasks:write` for POST/PUT/DELETE calls.
+    apiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: |
+        Static API key (configured via the API_KEY environment variable).
+        Grants both scopes (full access).
 
   schemas:
     TaskStatus:

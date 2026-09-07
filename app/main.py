@@ -15,7 +15,7 @@ from app.schemas import (
     ErrorResponse,
 )
 from app.config import get_settings
-from app.auth import require_scope, SCOPE_READ, SCOPE_FULL
+from app.auth import require_scope, SCOPE_READ, SCOPE_WRITE
 
 settings = get_settings()
 
@@ -206,7 +206,7 @@ def retrieve_list_tasks(
         422: ERROR_422,
         500: ERROR_500,
     },
-    dependencies=[Depends(require_scope(SCOPE_FULL))],
+    dependencies=[Depends(require_scope(SCOPE_WRITE))],
 )
 def create_new_task(task: TaskCreate, db: Session = Depends(get_db)):
     """Create a new task"""
@@ -278,7 +278,7 @@ def retrieve_task_id(taskId: UUID, db: Session = Depends(get_db)):
         422: ERROR_422,
         500: ERROR_500,
     },
-    dependencies=[Depends(require_scope(SCOPE_FULL))],
+    dependencies=[Depends(require_scope(SCOPE_WRITE))],
 )
 def update_task_id(
     taskId: UUID, task_update: TaskUpdate, db: Session = Depends(get_db)
@@ -332,7 +332,7 @@ def update_task_id(
         422: ERROR_422,
         500: ERROR_500,
     },
-    dependencies=[Depends(require_scope(SCOPE_FULL))],
+    dependencies=[Depends(require_scope(SCOPE_WRITE))],
 )
 def delete_task_id(taskId: UUID, db: Session = Depends(get_db)):
     """Delete a task by ID"""
@@ -382,17 +382,27 @@ def custom_openapi():
     for name in ("HTTPValidationError", "ValidationError"):
         schema.get("components", {}).get("schemas", {}).pop(name, None)
 
-    # Document the JWT bearer scheme (enforcement is disabled via AUTH_DISABLED).
-    schema.setdefault("components", {}).setdefault("securitySchemes", {})["bearerAuth"] = {
+    # Document the two accepted auth methods: JWT bearer, or a static API key.
+    security_schemes = schema.setdefault("components", {}).setdefault("securitySchemes", {})
+    security_schemes["bearerAuth"] = {
         "type": "http",
         "scheme": "bearer",
         "bearerFormat": "JWT",
         "description": (
             "Access token issued by the configured external IdP. Required scopes: "
-            "`tasks:read` for GET calls, `tasks:full` for all calls."
+            "`tasks:read` for GET calls, `tasks:write` for POST/PUT/DELETE calls."
         ),
     }
-    schema["security"] = [{"bearerAuth": []}]
+    security_schemes["apiKeyAuth"] = {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key",
+        "description": (
+            "Static API key (configured via the API_KEY environment variable). "
+            "Grants both scopes (full access)."
+        ),
+    }
+    schema["security"] = [{"bearerAuth": []}, {"apiKeyAuth": []}]
 
     app.openapi_schema = schema
     return schema

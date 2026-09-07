@@ -139,20 +139,32 @@ Environment variables can be configured in `.env` file:
 
 ### Authentication
 
-Access control is JWT-based, validated against an external IdP (issuer, audience,
-and JWKS endpoint are configured per environment, not managed by this API):
+Access control is scope-based. Two scopes are recognized - neither implies the
+other, so full access requires both:
 
-- `AUTH_DISABLED` - set to `true` to disable JWT enforcement entirely (default: `false`)
+- `tasks:read` - read-only calls (`GET /tasks`, `GET /tasks/{taskId}`)
+- `tasks:write` - write calls (`POST /tasks`, `PUT /tasks/{taskId}`, `DELETE /tasks/{taskId}`)
+
+Two authentication methods are supported:
+
+**JWT bearer token**, validated against an external IdP (issuer, audience, and
+JWKS endpoint are configured per environment, not managed by this API):
+
 - `JWT_ISSUER` - expected `iss` claim
 - `JWT_AUDIENCE` - expected `aud` claim
 - `JWT_JWK_URL` - JWKS endpoint used to fetch/verify signing keys
 - `JWT_ALGORITHMS` - comma-separated allowed signing algorithms (default: `RS256`)
 - `JWT_LEEWAY_SECONDS` - clock skew leeway in seconds (default: `0`)
 
-Requests must carry `Authorization: Bearer <token>`, with a `scope` (or `scp`) claim:
+Requests carry `Authorization: Bearer <token>`, with a `scope` (or `scp`) claim
+listing the granted scope(s).
 
-- `tasks:read` - read-only calls (`GET /tasks`, `GET /tasks/{taskId}`)
-- `tasks:full` - all calls, including create/update/delete
+**Static API key**, provided via external configuration (a Kubernetes Secret in
+production):
+
+- `API_KEY` - the expected key value
+
+Requests carry `X-API-Key: <key>`. A valid key grants both scopes (full access).
 
 ## Database Schema
 
