@@ -15,6 +15,7 @@ from app.schemas import (
     ErrorResponse,
 )
 from app.config import get_settings
+from app.auth import require_scope, SCOPE_READ, SCOPE_FULL
 
 settings = get_settings()
 
@@ -42,6 +43,8 @@ ERROR_400 = {
     "model": ErrorResponse,
     "description": "Bad request - invalid input or query parameters",
 }
+ERROR_401 = {"model": ErrorResponse, "description": "Unauthorized - missing or invalid token"}
+ERROR_403 = {"model": ErrorResponse, "description": "Forbidden - token missing required scope"}
 ERROR_404 = {"model": ErrorResponse, "description": "Task not found"}
 ERROR_422 = {"model": ErrorResponse, "description": "Validation error"}
 ERROR_500 = {"model": ErrorResponse, "description": "Internal server error"}
@@ -49,6 +52,8 @@ ERROR_500 = {"model": ErrorResponse, "description": "Internal server error"}
 # Default machine-readable error code per HTTP status.
 _STATUS_CODE_MAP = {
     400: "INVALID_PARAMETER",
+    401: "UNAUTHORIZED",
+    403: "FORBIDDEN",
     404: "NOT_FOUND",
     422: "VALIDATION_ERROR",
     500: "INTERNAL_ERROR",
@@ -144,7 +149,14 @@ def read_root():
         "tasks under the `tasks` property."
     ),
     tags=["Tasks"],
-    responses={400: ERROR_400, 422: ERROR_422, 500: ERROR_500},
+    responses={
+        400: ERROR_400,
+        401: ERROR_401,
+        403: ERROR_403,
+        422: ERROR_422,
+        500: ERROR_500,
+    },
+    dependencies=[Depends(require_scope(SCOPE_READ))],
 )
 def retrieve_list_tasks(
     assignee: Optional[str] = Query(
@@ -187,7 +199,14 @@ def retrieve_list_tasks(
         "by the server. Returns the created task."
     ),
     tags=["Tasks"],
-    responses={400: ERROR_400, 422: ERROR_422, 500: ERROR_500},
+    responses={
+        400: ERROR_400,
+        401: ERROR_401,
+        403: ERROR_403,
+        422: ERROR_422,
+        500: ERROR_500,
+    },
+    dependencies=[Depends(require_scope(SCOPE_FULL))],
 )
 def create_new_task(task: TaskCreate, db: Session = Depends(get_db)):
     """Create a new task"""
@@ -217,7 +236,15 @@ def create_new_task(task: TaskCreate, db: Session = Depends(get_db)):
         "complete task object including all fields and timestamps."
     ),
     tags=["Tasks"],
-    responses={400: ERROR_400, 404: ERROR_404, 422: ERROR_422, 500: ERROR_500},
+    responses={
+        400: ERROR_400,
+        401: ERROR_401,
+        403: ERROR_403,
+        404: ERROR_404,
+        422: ERROR_422,
+        500: ERROR_500,
+    },
+    dependencies=[Depends(require_scope(SCOPE_READ))],
 )
 def retrieve_task_id(taskId: UUID, db: Session = Depends(get_db)):
     """Retrieve a task by ID"""
@@ -243,7 +270,15 @@ def retrieve_task_id(taskId: UUID, db: Session = Depends(get_db)):
         "cannot be modified. Returns the updated task."
     ),
     tags=["Tasks"],
-    responses={400: ERROR_400, 404: ERROR_404, 422: ERROR_422, 500: ERROR_500},
+    responses={
+        400: ERROR_400,
+        401: ERROR_401,
+        403: ERROR_403,
+        404: ERROR_404,
+        422: ERROR_422,
+        500: ERROR_500,
+    },
+    dependencies=[Depends(require_scope(SCOPE_FULL))],
 )
 def update_task_id(
     taskId: UUID, task_update: TaskUpdate, db: Session = Depends(get_db)
@@ -289,7 +324,15 @@ def update_task_id(
         "operation cannot be undone and returns no content on success."
     ),
     tags=["Tasks"],
-    responses={400: ERROR_400, 404: ERROR_404, 422: ERROR_422, 500: ERROR_500},
+    responses={
+        400: ERROR_400,
+        401: ERROR_401,
+        403: ERROR_403,
+        404: ERROR_404,
+        422: ERROR_422,
+        500: ERROR_500,
+    },
+    dependencies=[Depends(require_scope(SCOPE_FULL))],
 )
 def delete_task_id(taskId: UUID, db: Session = Depends(get_db)):
     """Delete a task by ID"""
@@ -338,6 +381,18 @@ def custom_openapi():
     # Drop the now-unused default validation schemas.
     for name in ("HTTPValidationError", "ValidationError"):
         schema.get("components", {}).get("schemas", {}).pop(name, None)
+
+    # Document the JWT bearer scheme (enforcement is disabled via AUTH_DISABLED).
+    schema.setdefault("components", {}).setdefault("securitySchemes", {})["bearerAuth"] = {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": (
+            "Access token issued by the configured external IdP. Required scopes: "
+            "`tasks:read` for GET calls, `tasks:full` for all calls."
+        ),
+    }
+    schema["security"] = [{"bearerAuth": []}]
 
     app.openapi_schema = schema
     return schema

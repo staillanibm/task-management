@@ -30,6 +30,10 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       APP_NAME: ${APP_NAME}
       APP_VERSION: ${APP_VERSION}
+      AUTH_DISABLED: ${AUTH_DISABLED:-true}
+      JWT_ISSUER: ${JWT_ISSUER:-}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:-}
+      JWT_JWK_URL: ${JWT_JWK_URL:-}
     ports:
       - "8000:8000"
     depends_on:

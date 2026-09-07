@@ -137,6 +137,23 @@ Environment variables can be configured in `.env` file:
 - `APP_NAME` - Application name
 - `APP_VERSION` - Application version
 
+### Authentication
+
+Access control is JWT-based, validated against an external IdP (issuer, audience,
+and JWKS endpoint are configured per environment, not managed by this API):
+
+- `AUTH_DISABLED` - set to `true` to disable JWT enforcement entirely (default: `false`)
+- `JWT_ISSUER` - expected `iss` claim
+- `JWT_AUDIENCE` - expected `aud` claim
+- `JWT_JWK_URL` - JWKS endpoint used to fetch/verify signing keys
+- `JWT_ALGORITHMS` - comma-separated allowed signing algorithms (default: `RS256`)
+- `JWT_LEEWAY_SECONDS` - clock skew leeway in seconds (default: `0`)
+
+Requests must carry `Authorization: Bearer <token>`, with a `scope` (or `scp`) claim:
+
+- `tasks:read` - read-only calls (`GET /tasks`, `GET /tasks/{taskId}`)
+- `tasks:full` - all calls, including create/update/delete
+
 ## Database Schema
 
 The `tasks` table includes:

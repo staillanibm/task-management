@@ -15,7 +15,11 @@ info:
     - Support for multiple task statuses and workflow states
     
     ## Authentication
-    Currently, this API does not require authentication. Future versions may include OAuth2 or API key authentication.
+    This API requires a JWT bearer token issued by an external identity provider
+    (issuer, audience, and JWKS endpoint are configured per environment). The
+    token's `scope` (or `scp`) claim must include `tasks:read` for read-only
+    calls, or `tasks:full` for all calls. Authentication can be disabled entirely
+    via configuration (`AUTH_DISABLED`), e.g. for local development.
   contact:
     name: API Support
     email: stephane.tailland@ibm.com
@@ -27,6 +31,8 @@ servers:
   - url: https://api.example.com/v1
     description: Production server
 
+security:
+  - bearerAuth: []
 
 tags:
   - name: Tasks
@@ -139,6 +145,18 @@ paths:
                     timestamp: "2026-06-09T08:30:00Z"
                     code: "INVALID_PARAMETER"
                     message: "Invalid status value. Must be one of: todo, inprogress, blocked, done, cancelled"
+        '401':
+          description: Unauthorized - missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - token missing required scope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '422':
           description: Validation error - Request failed schema validation
           content:
@@ -236,6 +254,18 @@ paths:
                     timestamp: "2026-06-09T08:30:00Z"
                     code: "VALIDATION_ERROR"
                     message: "Description is required"
+        '401':
+          description: Unauthorized - missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - token missing required scope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '422':
           description: Validation error - Request failed schema validation
           content:
@@ -311,6 +341,18 @@ paths:
                     timestamp: "2026-06-09T08:30:00Z"
                     code: "INVALID_UUID"
                     message: "Invalid UUID format for taskId"
+        '401':
+          description: Unauthorized - missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - token missing required scope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Task not found
           content:
@@ -408,6 +450,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized - missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - token missing required scope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Task not found
           content:
@@ -454,6 +508,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized - missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - token missing required scope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Task not found
           content:
@@ -482,6 +548,15 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
 
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Access token issued by the configured external IdP. Required scopes:
+        `tasks:read` for GET calls, `tasks:full` for all calls.
+
   schemas:
     TaskStatus:
       type: string
