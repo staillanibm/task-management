@@ -159,12 +159,14 @@ JWKS endpoint are configured per environment, not managed by this API):
 Requests carry `Authorization: Bearer <token>`, with a `scope` (or `scp`) claim
 listing the granted scope(s).
 
-**Static API key**, provided via external configuration (a Kubernetes Secret in
-production):
+**HTTP Basic auth**, with credentials provided via external configuration (a
+Kubernetes Secret in production):
 
-- `API_KEY` - the expected key value
+- `BASIC_AUTH_USERNAME` - the expected username
+- `BASIC_AUTH_PASSWORD` - the expected password
 
-Requests carry `X-API-Key: <key>`. A valid key grants both scopes (full access).
+Requests carry `Authorization: Basic <base64(username:password)>`. Valid
+credentials grant the admin role, i.e. both scopes (full access).
 
 ## Database Schema
 

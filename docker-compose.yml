@@ -33,7 +33,8 @@ services:
       JWT_ISSUER: ${JWT_ISSUER:-}
       JWT_AUDIENCE: ${JWT_AUDIENCE:-}
       JWT_JWK_URL: ${JWT_JWK_URL:-}
-      API_KEY: ${API_KEY:-}
+      BASIC_AUTH_USERNAME: ${BASIC_AUTH_USERNAME:-}
+      BASIC_AUTH_PASSWORD: ${BASIC_AUTH_PASSWORD:-}
     ports:
       - "8000:8000"
     depends_on:

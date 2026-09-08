@@ -17,13 +17,13 @@ info:
     ## Authentication
     This API accepts either a JWT bearer token issued by an external identity
     provider (issuer, audience, and JWKS endpoint are configured per environment),
-    or a static API key sent as `X-API-Key` (configured externally, e.g. via a
+    or HTTP Basic auth with credentials configured externally (e.g. via a
     Kubernetes Secret).
 
     Access is scope-based: `tasks:read` grants read-only calls (GET), and
     `tasks:write` grants write calls (POST/PUT/DELETE) - neither implies the
     other, so a JWT needs both scopes (in its `scope` or `scp` claim) for full
-    access. A valid API key grants both scopes.
+    access. Valid Basic auth credentials grant the admin role: both scopes.
   contact:
     name: API Support
     email: stephane.tailland@ibm.com
@@ -37,7 +37,7 @@ servers:
 
 security:
   - bearerAuth: []
-  - apiKeyAuth: []
+  - basicAuth: []
 
 tags:
   - name: Tasks
@@ -561,13 +561,13 @@ components:
       description: |
         Access token issued by the configured external IdP. Required scopes:
         `tasks:read` for GET calls, `tasks:write` for POST/PUT/DELETE calls.
-    apiKeyAuth:
-      type: apiKey
-      in: header
-      name: X-API-Key
+    basicAuth:
+      type: http
+      scheme: basic
       description: |
-        Static API key (configured via the API_KEY environment variable).
-        Grants both scopes (full access).
+        Static credentials (configured via the BASIC_AUTH_USERNAME and
+        BASIC_AUTH_PASSWORD environment variables). Grants the admin role:
+        both scopes (full access).
 
   schemas:
     TaskStatus:

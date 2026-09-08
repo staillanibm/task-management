@@ -26,9 +26,11 @@ class Settings(BaseSettings):
     jwt_algorithms: str = "RS256"
     jwt_leeway_seconds: int = 0
 
-    # Optional API key (X-API-Key header), provided via external configuration
-    # (e.g. a Kubernetes Secret). A valid key grants both scopes (full access).
-    api_key: Optional[str] = None
+    # Optional HTTP Basic auth credentials, provided via external configuration
+    # (e.g. a Kubernetes Secret). Valid credentials grant the admin role, i.e.
+    # both scopes (full access).
+    basic_auth_username: Optional[str] = None
+    basic_auth_password: Optional[str] = None
 
     class Config:
         env_file = ".env"

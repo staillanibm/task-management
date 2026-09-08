@@ -83,11 +83,16 @@ spec:
             configMapKeyRef:
               name: task-management-config
               key: JWT_JWK_URL
-        - name: API_KEY
+        - name: BASIC_AUTH_USERNAME
           valueFrom:
             secretKeyRef:
               name: task-management-secret
-              key: API_KEY
+              key: BASIC_AUTH_USERNAME
+        - name: BASIC_AUTH_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: task-management-secret
+              key: BASIC_AUTH_PASSWORD
         resources:
           requests:
             memory: "128Mi"

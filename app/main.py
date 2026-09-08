@@ -382,7 +382,7 @@ def custom_openapi():
     for name in ("HTTPValidationError", "ValidationError"):
         schema.get("components", {}).get("schemas", {}).pop(name, None)
 
-    # Document the two accepted auth methods: JWT bearer, or a static API key.
+    # Document the two accepted auth methods: JWT bearer, or HTTP Basic auth.
     security_schemes = schema.setdefault("components", {}).setdefault("securitySchemes", {})
     security_schemes["bearerAuth"] = {
         "type": "http",
@@ -393,16 +393,16 @@ def custom_openapi():
             "`tasks:read` for GET calls, `tasks:write` for POST/PUT/DELETE calls."
         ),
     }
-    security_schemes["apiKeyAuth"] = {
-        "type": "apiKey",
-        "in": "header",
-        "name": "X-API-Key",
+    security_schemes["basicAuth"] = {
+        "type": "http",
+        "scheme": "basic",
         "description": (
-            "Static API key (configured via the API_KEY environment variable). "
-            "Grants both scopes (full access)."
+            "Static credentials (configured via the BASIC_AUTH_USERNAME and "
+            "BASIC_AUTH_PASSWORD environment variables). Grants the admin "
+            "role: both scopes (full access)."
         ),
     }
-    schema["security"] = [{"bearerAuth": []}, {"apiKeyAuth": []}]
+    schema["security"] = [{"bearerAuth": []}, {"basicAuth": []}]
 
     app.openapi_schema = schema
     return schema

@@ -1,4 +1,4 @@
-"""Access control: JWT bearer tokens and an API key, both scope-based.
+"""Access control: JWT bearer tokens and HTTP Basic auth, both scope-based.
 
 JWT tokens are expected to be issued by an external IdP (Keycloak, Auth0,
 Entra ID, etc.). Signature, issuer and audience are validated against that
@@ -14,14 +14,16 @@ list):
 
 A client needs both scopes to have full access - neither implies the other.
 
-As an alternative to a JWT, a request can authenticate with a static API key
-(`X-API-Key` header), configured externally via the API_KEY environment
-variable (typically injected from a Kubernetes Secret). A valid API key
-grants both scopes (full access).
+As an alternative to a JWT, a request can authenticate with HTTP Basic auth,
+using credentials configured externally via the BASIC_AUTH_USERNAME and
+BASIC_AUTH_PASSWORD environment variables (typically injected from a
+Kubernetes Secret). Valid Basic auth credentials grant the admin role, i.e.
+both scopes (full access).
 """
 
 from __future__ import annotations
 
+import base64
 import secrets
 from typing import Optional
 
@@ -37,11 +39,11 @@ SCOPE_WRITE = "tasks:write"
 _jwk_client: Optional[PyJWKClient] = None
 
 
-def _unauthorized(message: str) -> HTTPException:
+def _unauthorized(message: str, scheme: str = "Bearer") -> HTTPException:
     return HTTPException(
         status_code=401,
         detail={"code": "UNAUTHORIZED", "message": message},
-        headers={"WWW-Authenticate": "Bearer"},
+        headers={"WWW-Authenticate": scheme},
     )
 
 
@@ -90,30 +92,46 @@ def _decode_token(token: str) -> dict:
         raise _unauthorized(f"Invalid token: {exc}")
 
 
+def _check_basic_auth(encoded_credentials: str) -> set[str]:
+    settings = get_settings()
+    if not (settings.basic_auth_username and settings.basic_auth_password):
+        raise _unauthorized("Basic auth is not configured on this server", scheme="Basic")
+
+    try:
+        decoded = base64.b64decode(encoded_credentials).decode("utf-8")
+    except (ValueError, UnicodeDecodeError):
+        raise _unauthorized("Invalid Basic auth credentials", scheme="Basic")
+
+    username, _, password = decoded.partition(":")
+    username_ok = secrets.compare_digest(username, settings.basic_auth_username)
+    password_ok = secrets.compare_digest(password, settings.basic_auth_password)
+    if not (username_ok and password_ok):
+        raise _unauthorized("Invalid Basic auth credentials", scheme="Basic")
+
+    # Basic auth is the admin role: full access, both scopes.
+    return {SCOPE_READ, SCOPE_WRITE}
+
+
 def _resolve_scopes(request: Request) -> set[str]:
-    api_key = request.headers.get("x-api-key")
-    if api_key is not None:
-        settings = get_settings()
-        if not settings.api_key:
-            raise _unauthorized("API key authentication is not configured on this server")
-        if not secrets.compare_digest(api_key, settings.api_key):
-            raise _unauthorized("Invalid API key")
-        return {SCOPE_READ, SCOPE_WRITE}
-
     auth_header = request.headers.get("authorization", "")
-    scheme, _, token = auth_header.partition(" ")
-    if scheme.lower() != "bearer" or not token:
-        raise _unauthorized("Missing bearer token or API key")
+    scheme, _, credentials = auth_header.partition(" ")
+    scheme = scheme.lower()
 
-    payload = _decode_token(token)
-    return _extract_scopes_from_token(payload)
+    if scheme == "basic" and credentials:
+        return _check_basic_auth(credentials)
+
+    if scheme == "bearer" and credentials:
+        payload = _decode_token(credentials)
+        return _extract_scopes_from_token(payload)
+
+    raise _unauthorized("Missing bearer token or Basic auth credentials")
 
 
 def require_scope(required_scope: str):
     """FastAPI dependency factory enforcing a minimum scope.
 
-    Accepts either a `X-API-Key` header or an `Authorization: Bearer <jwt>`
-    header. A valid API key carries both scopes.
+    Accepts either `Authorization: Basic <credentials>` (admin role, both
+    scopes) or `Authorization: Bearer <jwt>` (scopes read from the token).
     """
 
     def dependency(request: Request) -> None:
