@@ -64,6 +64,12 @@ def _extract_scopes_from_token(payload: dict) -> set[str]:
     return set()
 
 
+def _extract_roles_from_token(payload: dict) -> set[str]:
+    realm_access = payload.get("realm_access")
+    roles = realm_access.get("roles") if isinstance(realm_access, dict) else None
+    return {str(role) for role in roles} if isinstance(roles, (list, tuple)) else set()
+
+
 def _decode_token(token: str) -> dict:
     settings = get_settings()
     if not (settings.jwt_issuer and settings.jwt_audience and settings.jwt_jwk_url):
@@ -112,30 +118,34 @@ def _check_basic_auth(encoded_credentials: str) -> set[str]:
     return {SCOPE_READ, SCOPE_WRITE}
 
 
-def _resolve_scopes(request: Request) -> set[str]:
+def _resolve_auth(request: Request) -> tuple[set[str], Optional[str], set[str]]:
+    """Return the granted scopes, the caller's email (None for Basic auth or a token without `email`)
+    and the realm roles of the caller (Basic auth carries the admin role)."""
     auth_header = request.headers.get("authorization", "")
     scheme, _, credentials = auth_header.partition(" ")
     scheme = scheme.lower()
 
     if scheme == "basic" and credentials:
-        return _check_basic_auth(credentials)
+        return _check_basic_auth(credentials), None, {get_settings().admin_role}
 
     if scheme == "bearer" and credentials:
         payload = _decode_token(credentials)
-        return _extract_scopes_from_token(payload)
+        return _extract_scopes_from_token(payload), payload.get("email"), _extract_roles_from_token(payload)
 
     raise _unauthorized("Missing bearer token or Basic auth credentials")
 
 
-def require_scope(required_scope: str):
+def require_scope(required_scope: str, admin_only: bool = False):
     """FastAPI dependency factory enforcing a minimum scope.
 
     Accepts either `Authorization: Basic <credentials>` (admin role, both
     scopes) or `Authorization: Bearer <jwt>` (scopes read from the token).
+    With `admin_only`, the caller must also hold the admin realm role (ADMIN_ROLE setting; Basic auth always does).
+    The dependency returns the `email` claim of the token (None with Basic auth).
     """
 
-    def dependency(request: Request) -> None:
-        scopes = _resolve_scopes(request)
+    def dependency(request: Request) -> Optional[str]:
+        scopes, email, roles = _resolve_auth(request)
         if required_scope not in scopes:
             raise HTTPException(
                 status_code=403,
@@ -144,5 +154,14 @@ def require_scope(required_scope: str):
                     "message": f"Missing the required scope '{required_scope}'",
                 },
             )
+        if admin_only and get_settings().admin_role not in roles:
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "code": "FORBIDDEN",
+                    "message": f"This call requires the '{get_settings().admin_role}' role",
+                },
+            )
+        return email
 
     return dependency

@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     jwt_algorithms: str = "RS256"
     jwt_leeway_seconds: int = 0
 
+    # Realm role (claim `realm_access.roles`) required, in a token, for admin-only calls (DELETE).
+    # Basic auth is always admin.
+    admin_role: str = "sttlab-admin"
+
     # Optional HTTP Basic auth credentials, provided via external configuration
     # (e.g. a Kubernetes Secret). Valid credentials grant the admin role, i.e.
     # both scopes (full access).

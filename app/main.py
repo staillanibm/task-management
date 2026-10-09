@@ -206,12 +206,15 @@ def retrieve_list_tasks(
         422: ERROR_422,
         500: ERROR_500,
     },
-    dependencies=[Depends(require_scope(SCOPE_WRITE))],
 )
-def create_new_task(task: TaskCreate, db: Session = Depends(get_db)):
-    """Create a new task"""
+def create_new_task(
+    task: TaskCreate,
+    db: Session = Depends(get_db),
+    caller_email: Optional[str] = Depends(require_scope(SCOPE_WRITE)),
+):
+    """Create a new task. The creator is the email of the authenticated user (token claim) when there is one."""
     db_task = Task(
-        creator=task.creator,
+        creator=caller_email or task.creator,
         assignee=task.assignee,
         status=task.status,
         target_date=task.targetDate,
@@ -332,7 +335,7 @@ def update_task_id(
         422: ERROR_422,
         500: ERROR_500,
     },
-    dependencies=[Depends(require_scope(SCOPE_WRITE))],
+    dependencies=[Depends(require_scope(SCOPE_WRITE, admin_only=True))],
 )
 def delete_task_id(taskId: UUID, db: Session = Depends(get_db)):
     """Delete a task by ID"""
